@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PCB EMI Loop Radiation Calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080c10;
+    --panel: #0d1520;
+    --border: #1a2d40;
+    --accent: #00e5ff;
+    --accent2: #ff6b35;
+    --warn: #ffcc00;
+    --danger: #ff2d55;
+    --safe: #00ff88;
+    --text: #c8dde8;
+    --dim: #8ab4c8;
+    --glow: 0 0 20px rgba(0,229,255,0.3);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+    padding: 20px;
+    background-image: 
+      radial-gradient(ellipse at 20% 20%, rgba(0,100,150,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 80%, rgba(255,107,53,0.05) 0%, transparent 60%),
+      linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 100% 100%, 100% 100%, 30px 30px, 30px 30px;
+  }
+  h1 {
+    font-family: 'Orbitron', monospace;
+    font-weight: 900;
+    font-size: clamp(16px, 3vw, 28px);
+    color: var(--accent);
+    text-shadow: var(--glow);
+    letter-spacing: 3px;
+    margin-bottom: 4px;
+  }
+  .subtitle {
+    color: var(--dim);
+    font-size: 12px;
+    letter-spacing: 2px;
+    margin-bottom: 24px;
+  }
+  .layout {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 16px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  @media (max-width: 800px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  }
+  .panel-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 3px;
+    margin-bottom: 20px;
+    opacity: 0.7;
+  }
+  .param-group { margin-bottom: 20px; }
+  .param-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 6px;
+    font-size: 11px;
+    color: var(--dim);
+    letter-spacing: 1px;
+  }
+  .param-label span:last-child {
+    font-size: 14px;
+    color: var(--accent);
+    font-family: 'Orbitron', monospace;
+  }
+  input[type=range] {
+    width: 100%;
+    -webkit-appearance: none;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: 0 0 10px var(--accent);
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track {
+    height: 4px;
+    background: linear-gradient(90deg, var(--accent) var(--pct, 50%), var(--border) var(--pct, 50%));
+    border-radius: 2px;
+  }
+  .param-range-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 9px;
+    color: #8ab4c8;
+    margin-top: 2px;
+  }
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 16px 0;
+  }
+  .result-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .result-row:last-child { border-bottom: none; }
+  .result-label { font-size: 10px; color: var(--dim); letter-spacing: 1px; }
+  .result-val {
+    font-family: 'Orbitron', monospace;
+    font-size: 16px;
+    font-weight: 700;
+  }
+  .gauge-container {
+    margin: 20px 0;
+    position: relative;
+  }
+  .gauge-label {
+    font-size: 10px;
+    color: var(--dim);
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+  }
+  .gauge-bar {
+    height: 28px;
+    background: var(--border);
+    border-radius: 2px;
+    position: relative;
+    overflow: hidden;
+  }
+  .gauge-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.3s ease, background 0.3s ease;
+    position: relative;
+  }
+  .gauge-fill::after {
+    content: '';
+    position: absolute;
+    top: 0; right: 0; bottom: 0;
+    width: 4px;
+    background: white;
+    box-shadow: 0 0 8px white;
+  }
+  .limit-marker {
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 2px;
+    background: var(--warn);
+    box-shadow: 0 0 6px var(--warn);
+  }
+  .limit-marker-label {
+    position: absolute;
+    top: -16px;
+    transform: translateX(-50%);
+    font-size: 8px;
+    color: var(--warn);
+    white-space: nowrap;
+  }
+  .status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 2px;
+    font-family: 'Orbitron', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    margin-top: 8px;
+  }
+  canvas {
+    width: 100%;
+    background: transparent;
+    border-radius: 2px;
+  }
+  .chart-container {
+    position: relative;
+    margin-top: 10px;
+  }
+  .chart-title {
+    font-size: 10px;
+    color: var(--dim);
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+  }
+  .legend {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    color: var(--dim);
+  }
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+  }
+  .loop-visual {
+    position: relative;
+    height: 160px;
+    margin: 16px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  svg text { font-family: 'Share Tech Mono', monospace; }
+  .info-box {
+    background: rgba(0,229,255,0.05);
+    border: 1px solid rgba(0,229,255,0.15);
+    border-radius: 2px;
+    padding: 10px 12px;
+    font-size: 10px;
+    color: var(--dim);
+    line-height: 1.7;
+    margin-top: 12px;
+  }
+  .info-box strong { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<div style="max-width:1200px; margin:0 auto;">
+  <h1>PCB EMI LOOP RADIATION</h1>
+  <div class="subtitle">MAGNETIC DIPOLE FIELD STRENGTH CALCULATOR · CISPR CLASS B COMPLIANCE</div>
+
+  <div class="layout">
+    <!-- LEFT: Controls -->
+    <div>
+      <div class="panel">
+        <div class="panel-title">▸ CIRCUIT PARAMETERS</div>
+
+        <div class="param-group">
+          <div class="param-label">
+            <span>LOOP AREA (A)</span>
+            <span id="areaVal">10.0 cm²</span>
+          </div>
+          <input type="range" id="area" min="0.5" max="100" step="0.5" value="10" oninput="update()">
+          <div class="param-range-labels"><span>0.5 cm²</span><span>100 cm²</span></div>
+        </div>
+
+        <!-- RC Circuit inputs -->
+        <div style="font-family:'Orbitron',monospace;font-size:9px;color:var(--accent);letter-spacing:2px;margin-bottom:12px;opacity:0.7;">▸ RC DISCHARGE SOURCE</div>
+
+        <div class="param-group">
+          <div class="param-label">
+            <span>CAP VOLTAGE (V)</span>
+            <span id="voltVal">24.0 V</span>
+          </div>
+          <input type="range" id="volt" min="1" max="100" step="1" value="24" oninput="update()">
+          <div class="param-range-labels"><span>1 V</span><span>100 V</span></div>
+        </div>
+
+        <div class="param-group">
+          <div class="param-label">
+            <span>SERIES RESISTOR (R)</span>
+            <span id="resVal">1.6 Ω</span>
+          </div>
+          <input type="range" id="res" min="0.1" max="50" step="0.1" value="1.6" oninput="update()">
+          <div class="param-range-labels"><span>0.1 Ω</span><span>50 Ω</span></div>
+        </div>
+
+        <div class="param-group">
+          <div class="param-label">
+            <span>CAPACITANCE (C)</span>
+            <span id="capVal">100 nF</span>
+          </div>
+          <input type="range" id="cap" min="1" max="10000" step="1" value="100" oninput="update()">
+          <div class="param-range-labels"><span>1 nF</span><span>10 µF</span></div>
+        </div>
+
+        <!-- RC derived values box -->
+        <div style="background:rgba(0,229,255,0.06);border:1px solid rgba(0,229,255,0.2);border-radius:2px;padding:10px 12px;margin-bottom:16px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;">
+            <div>
+              <div style="font-size:9px;color:#8ab4c8;letter-spacing:1px;margin-bottom:2px;">I_PEAK = V / R</div>
+              <div id="rcPeak" style="font-family:'Orbitron',monospace;font-size:14px;color:var(--accent2);font-weight:700;">—</div>
+            </div>
+            <div>
+              <div style="font-size:9px;color:#8ab4c8;letter-spacing:1px;margin-bottom:2px;">τ = R · C</div>
+              <div id="rcTau" style="font-family:'Orbitron',monospace;font-size:14px;color:var(--warn);font-weight:700;">—</div>
+            </div>
+            <div>
+              <div style="font-size:9px;color:#8ab4c8;letter-spacing:1px;margin-bottom:2px;">tᵣ = 2.2 · R · C</div>
+              <div id="rcTr" style="font-family:'Orbitron',monospace;font-size:14px;color:var(--safe);font-weight:700;">—</div>
+            </div>
+            <div>
+              <div style="font-size:9px;color:#8ab4c8;letter-spacing:1px;margin-bottom:2px;">½ C V²</div>
+              <div id="rcEnergy" style="font-family:'Orbitron',monospace;font-size:13px;color:#c77dff;font-weight:700;">—</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="param-group">
+          <div class="param-label">
+            <span>SWITCHING FREQ (f₀)</span>
+            <span id="freqVal">200 kHz</span>
+          </div>
+          <input type="range" id="freq" min="10" max="2000" step="10" value="200" oninput="update()">
+          <div class="param-range-labels"><span>10 kHz</span><span>2 MHz</span></div>
+        </div>
+
+        <div class="param-group">
+          <div class="param-label">
+            <span>MEASUREMENT DIST (r)</span>
+            <span id="distVal">3.0 m</span>
+          </div>
+          <input type="range" id="dist" min="0.1" max="10" step="0.1" value="3" oninput="update()">
+          <div class="param-range-labels"><span>0.1 m</span><span>10 m</span></div>
+        </div>
+
+        <hr class="divider">
+        <div class="panel-title">▸ DERIVED VALUES</div>
+
+        <div class="result-row">
+          <span class="result-label">di/dt</span>
+          <span class="result-val" id="didt" style="color:var(--accent2)">—</span>
+        </div>
+        <div class="result-row">
+          <span class="result-label">DIPOLE MOMENT (m)</span>
+          <span class="result-val" id="moment" style="color:var(--accent)">—</span>
+        </div>
+        <div class="result-row">
+          <span class="result-label">LOOP INDUCTANCE (est.)</span>
+          <span class="result-val" id="linduc" style="color:var(--warn)">—</span>
+        </div>
+
+        <div class="info-box">
+          <strong>I_peak = V / R &nbsp;·&nbsp; tᵣ = 2.2·R·C</strong><br>
+          <strong>E(f) = 131×10⁻¹⁶ · A · I · f² / r</strong><br>
+          Harmonics: I_n via trapezoidal envelope model<br>
+          CISPR Class B limit @ 3m: <strong>40 dBμV/m</strong>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Visualizations -->
+    <div style="display:flex; flex-direction:column; gap:16px;">
+
+      <!-- Fundamental E-field gauge -->
+      <div class="panel">
+        <div class="panel-title">▸ RADIATED E-FIELD vs CISPR CLASS B LIMIT</div>
+
+        <div class="gauge-container" style="margin-top:24px;">
+          <div class="gauge-label">FUNDAMENTAL (f₀)</div>
+          <div class="gauge-bar">
+            <div class="gauge-fill" id="gauge1"></div>
+            <div class="limit-marker" id="limitMark1">
+              <span class="limit-marker-label">LIMIT</span>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--dim);margin-top:3px;">
+            <span>0 dBμV/m</span><span id="g1val" style="color:var(--accent);font-size:11px;"></span><span>80 dBμV/m</span>
+          </div>
+        </div>
+
+        <div id="harmGauges"></div>
+
+        <div id="statusBadge" class="status-badge" style="margin-top:12px;"></div>
+      </div>
+
+      <!-- Harmonic spectrum chart -->
+      <div class="panel">
+        <div class="panel-title">▸ HARMONIC SPECTRUM (1st → 5th)</div>
+        <div class="chart-container">
+          <canvas id="spectrumChart" height="200"></canvas>
+        </div>
+        <div class="legend" id="specLegend"></div>
+      </div>
+
+      <!-- Loop visual + field map -->
+      <div class="panel">
+        <div class="panel-title">▸ LOOP GEOMETRY & FIELD INTENSITY</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div>
+            <div class="chart-title">CURRENT LOOP REPRESENTATION</div>
+            <div class="loop-visual">
+              <svg id="loopSvg" viewBox="0 0 200 160" style="width:100%;height:100%;"></svg>
+            </div>
+          </div>
+          <div>
+            <div class="chart-title">FIELD GRADIENT (log scale)</div>
+            <canvas id="fieldCanvas" height="160" style="height:160px;"></canvas>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const CISPR_LIMIT_DBuVm = 40; // dBμV/m at 3m for CISPR Class B (30MHz+, but we use as reference)
+const CISPR_LIMIT_VpM = Math.pow(10, CISPR_LIMIT_DBuVm / 20) * 1e-6; // in V/m
+
+// Harmonic colors
+const harmColors = ['#00e5ff','#ff6b35','#ffcc00','#00ff88','#c77dff'];
+const harmLabels = ['1st','2nd','3rd','4th','5th'];
+
+function getParams() {
+  const V   = parseFloat(document.getElementById('volt').value);
+  const R   = parseFloat(document.getElementById('res').value);
+  const C   = parseFloat(document.getElementById('cap').value) * 1e-9; // nF → F
+  const I   = V / R;           // peak current from RC discharge
+  const tau = R * C;           // time constant
+  const tr  = 2.2 * tau;       // 10-90% rise time
+  return {
+    A:  parseFloat(document.getElementById('area').value) * 1e-4,
+    I, V, R, C, tau, tr,
+    f0: parseFloat(document.getElementById('freq').value) * 1e3,
+    r:  parseFloat(document.getElementById('dist').value)
+  };
+}
+
+// E-field for harmonic n
+function calcE(A, I_n, fn, r) {
+  return (131e-16 * A * I_n * fn * fn) / r;
+}
+
+// Harmonic current amplitude (trapezoidal approximation)
+function harmonicCurrent(I, n, f0, tr) {
+  // For trapezoidal: I_n = I * (2/(n*pi)) * |sin(n*pi*tr*f0)| / (n*pi*tr*f0)
+  const arg = n * Math.PI * tr * f0;
+  const sinc = arg < 1e-9 ? 1 : Math.sin(arg) / arg;
+  return I * (2 / (n * Math.PI)) * Math.abs(sinc);
+}
+
+function toDBuVm(E_Vpm) {
+  if (E_Vpm <= 0) return -100;
+  return 20 * Math.log10(E_Vpm / 1e-6);
+}
+
+function update() {
+  const p = getParams();
+
+  // Update display labels
+  document.getElementById('areaVal').textContent = (p.A * 1e4).toFixed(1) + ' cm²';
+  document.getElementById('voltVal').textContent = p.V.toFixed(1) + ' V';
+  document.getElementById('resVal').textContent  = p.R.toFixed(1) + ' Ω';
+  // Cap display: show nF or µF
+  const capNF = p.C * 1e9;
+  document.getElementById('capVal').textContent  = capNF >= 1000 ? (capNF/1000).toFixed(2) + ' µF' : capNF.toFixed(0) + ' nF';
+  document.getElementById('freqVal').textContent = (p.f0 / 1e3).toFixed(0) + ' kHz';
+  document.getElementById('distVal').textContent = p.r.toFixed(1) + ' m';
+
+  // RC derived box
+  document.getElementById('rcPeak').textContent   = p.I.toFixed(2) + ' A';
+  const tauUs = p.tau * 1e6;
+  document.getElementById('rcTau').textContent    = tauUs >= 1 ? tauUs.toFixed(2) + ' µs' : (p.tau*1e9).toFixed(1) + ' ns';
+  const trNs = p.tr * 1e9;
+  document.getElementById('rcTr').textContent     = trNs >= 1000 ? (trNs/1000).toFixed(2) + ' µs' : trNs.toFixed(1) + ' ns';
+  const energy = 0.5 * p.C * p.V * p.V;
+  document.getElementById('rcEnergy').textContent = energy >= 1e-3 ? (energy*1e3).toFixed(2) + ' mJ' : (energy*1e6).toFixed(1) + ' µJ';
+
+  // Derived display
+  const didt = p.I / p.tr;
+  document.getElementById('didt').textContent = didt >= 1e6 ? (didt/1e6).toFixed(2) + ' MA/s' : (didt/1e3).toFixed(1) + ' kA/s';
+  document.getElementById('moment').textContent = (p.I * p.A * 1e6).toFixed(3) + ' μA·m²';
+  // Simple square loop inductance estimate: L ≈ μ₀*sqrt(A)/pi * (ln(sqrt(A)/w) + ...) rough = 10nH per cm
+  const side = Math.sqrt(p.A * 1e4); // cm
+  const L_est = side * 1e-8; // rough: 10nH/cm
+  document.getElementById('linduc').textContent = (L_est * 1e9).toFixed(1) + ' nH';
+
+  // Update slider track fill
+  ['area','volt','res','cap','freq','dist'].forEach(id => {
+    const el = document.getElementById(id);
+    const pct = ((el.value - el.min) / (el.max - el.min)) * 100;
+    el.style.setProperty('--pct', pct + '%');
+  });
+
+  // Compute harmonics
+  const harmonics = [];
+  for (let n = 1; n <= 5; n++) {
+    const fn = n * p.f0;
+    const I_n = harmonicCurrent(p.I, n, p.f0, p.tr);
+    const E = calcE(p.A, I_n, fn, p.r);
+    const dB = toDBuVm(E);
+    harmonics.push({ n, fn, I_n, E, dB });
+  }
+
+  // Update gauges
+  const maxDB = 80;
+  const limitPct = (CISPR_LIMIT_DBuVm / maxDB) * 100;
+
+  // Fundamental gauge
+  const h1 = harmonics[0];
+  updateGauge('gauge1', 'g1val', 'limitMark1', h1, maxDB, limitPct);
+
+  // Build harmonic gauges dynamically
+  const container = document.getElementById('harmGauges');
+  container.innerHTML = '';
+  for (let i = 1; i < 5; i++) {
+    const h = harmonics[i];
+    const div = document.createElement('div');
+    div.className = 'gauge-container';
+    div.innerHTML = `
+      <div class="gauge-label">${harmLabels[i]} HARMONIC (${(h.fn/1e3).toFixed(0)} kHz)</div>
+      <div class="gauge-bar" style="height:18px;">
+        <div id="hg${i}" style="height:100%;border-radius:2px;transition:width 0.3s,background 0.3s;position:relative;"></div>
+        <div style="position:absolute;top:0;bottom:0;left:${limitPct}%;width:2px;background:var(--warn);box-shadow:0 0 6px var(--warn);"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--dim);margin-top:2px;">
+        <span style="color:${harmColors[i]};font-size:10px;">${h.dB.toFixed(1)} dBμV/m</span>
+        <span>${(h.I_n).toFixed(2)} A</span>
+      </div>
+    `;
+    container.appendChild(div);
+    const fill = div.querySelector(`#hg${i}`);
+    const pct = Math.min(100, Math.max(0, (h.dB / maxDB) * 100));
+    const over = h.dB >= CISPR_LIMIT_DBuVm;
+    fill.style.width = pct + '%';
+    fill.style.background = over
+      ? `linear-gradient(90deg, #ff2d55aa, #ff2d55)`
+      : `linear-gradient(90deg, ${harmColors[i]}66, ${harmColors[i]})`;
+  }
+
+  // Overall status
+  const worst = Math.max(...harmonics.map(h => h.dB));
+  const badge = document.getElementById('statusBadge');
+  if (worst < CISPR_LIMIT_DBuVm - 10) {
+    badge.textContent = '✓ COMPLIANT — MARGIN > 10dB';
+    badge.style.background = 'rgba(0,255,136,0.1)';
+    badge.style.color = 'var(--safe)';
+    badge.style.border = '1px solid var(--safe)';
+  } else if (worst < CISPR_LIMIT_DBuVm) {
+    badge.textContent = '⚠ MARGINAL — WITHIN LIMIT';
+    badge.style.background = 'rgba(255,204,0,0.1)';
+    badge.style.color = 'var(--warn)';
+    badge.style.border = '1px solid var(--warn)';
+  } else {
+    badge.textContent = '✗ EXCEEDS CISPR LIMIT';
+    badge.style.background = 'rgba(255,45,85,0.1)';
+    badge.style.color = 'var(--danger)';
+    badge.style.border = '1px solid var(--danger)';
+  }
+
+  drawSpectrum(harmonics);
+  drawLoop(p);
+  drawFieldGradient(harmonics[0].E, p.r);
+}
+
+function updateGauge(fillId, valId, markId, h, maxDB, limitPct) {
+  const fill = document.getElementById(fillId);
+  const val = document.getElementById(valId);
+  const mark = document.getElementById(markId);
+  const pct = Math.min(100, Math.max(0, (h.dB / maxDB) * 100));
+  const over = h.dB >= CISPR_LIMIT_DBuVm;
+  fill.style.width = pct + '%';
+  fill.style.background = over
+    ? 'linear-gradient(90deg, #ff2d55aa, #ff2d55)'
+    : `linear-gradient(90deg, ${harmColors[0]}44, ${harmColors[0]})`;
+  val.textContent = h.dB.toFixed(1) + ' dBμV/m';
+  val.style.color = over ? 'var(--danger)' : harmColors[0];
+  mark.style.left = limitPct + '%';
+}
+
+function drawSpectrum(harmonics) {
+  const canvas = document.getElementById('spectrumChart');
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.parentElement.offsetWidth;
+  const H = 200;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const pad = { top: 20, right: 20, bottom: 40, left: 50 };
+  const cw = W - pad.left - pad.right;
+  const ch = H - pad.top - pad.bottom;
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Grid
+  ctx.strokeStyle = 'rgba(26,45,64,0.8)';
+  ctx.lineWidth = 1;
+  for (let db = 0; db <= 80; db += 10) {
+    const y = pad.top + ch - (db / 80) * ch;
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + cw, y); ctx.stroke();
+    ctx.fillStyle = '#8ab4c8';
+    ctx.font = '9px Share Tech Mono';
+    ctx.fillText(db, pad.left - 28, y + 3);
+  }
+
+  // CISPR limit line
+  const limitY = pad.top + ch - (CISPR_LIMIT_DBuVm / 80) * ch;
+  ctx.strokeStyle = '#ffcc0088';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([6, 4]);
+  ctx.beginPath(); ctx.moveTo(pad.left, limitY); ctx.lineTo(pad.left + cw, limitY); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#ffcc00';
+  ctx.font = '9px Share Tech Mono';
+  ctx.fillText('CISPR LIMIT', pad.left + 4, limitY - 4);
+
+  // Bars
+  const barW = (cw / 5) * 0.55;
+  const gap = cw / 5;
+
+  harmonics.forEach((h, i) => {
+    const x = pad.left + gap * i + gap * 0.225;
+    const dbClamped = Math.max(0, h.dB);
+    const barH = (dbClamped / 80) * ch;
+    const y = pad.top + ch - barH;
+    const over = h.dB >= CISPR_LIMIT_DBuVm;
+    const color = over ? '#ff2d55' : harmColors[i];
+
+    // Glow
+    ctx.shadowColor = color;
+    ctx.shadowBlur = over ? 20 : 10;
+
+    const grad = ctx.createLinearGradient(x, y, x, pad.top + ch);
+    grad.addColorStop(0, color);
+    grad.addColorStop(1, color + '22');
+    ctx.fillStyle = grad;
+    ctx.fillRect(x, y, barW, barH);
+    ctx.shadowBlur = 0;
+
+    // Top value
+    ctx.fillStyle = color;
+    ctx.font = 'bold 9px Share Tech Mono';
+    ctx.textAlign = 'center';
+    ctx.fillText(h.dB.toFixed(0) + ' dB', x + barW / 2, y - 4);
+
+    // X label
+    ctx.fillStyle = '#8ab4c8';
+    ctx.fillText(`${(h.fn / 1e3).toFixed(0)}k`, x + barW / 2, H - pad.bottom + 24);
+  });
+
+  // Y axis label
+  ctx.fillStyle = '#8ab4c8';
+  ctx.font = '9px Share Tech Mono';
+  ctx.textAlign = 'left';
+  ctx.save();
+  ctx.translate(10, pad.top + ch / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.textAlign = 'center';
+  ctx.fillText('dBμV/m', 0, 0);
+  ctx.restore();
+}
+
+function drawLoop(p) {
+  const svg = document.getElementById('loopSvg');
+  const side = Math.sqrt(p.A * 1e4); // cm
+  const maxSide = 10; // cm = 100cm² max
+  const scaledSide = (side / maxSide) * 80 + 10;
+  const cx = 100, cy = 80;
+  const hw = scaledSide / 2;
+
+  // Current flow indicator color
+  const didt = p.I / p.tr;
+  const intensity = Math.min(1, didt / 5e8);
+  const r = Math.round(255 * intensity);
+  const g = Math.round(229 * (1 - intensity));
+  const strokeCol = `rgb(${r},${g},255)`;
+
+  svg.innerHTML = `
+    <defs>
+      <marker id="arr" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 Z" fill="${strokeCol}"/>
+      </marker>
+      <filter id="glow">
+        <feGaussianBlur stdDeviation="3" result="blur"/>
+        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+    <!-- Field area fill -->
+    <rect x="${cx-hw}" y="${cy-hw}" width="${scaledSide}" height="${scaledSide}" 
+          fill="rgba(0,229,255,0.04)" stroke="none"/>
+    <!-- Loop -->
+    <rect x="${cx-hw}" y="${cy-hw}" width="${scaledSide}" height="${scaledSide}" 
+          fill="none" stroke="${strokeCol}" stroke-width="2.5" filter="url(#glow)"
+          stroke-dasharray="${scaledSide*2},0"/>
+    <!-- Current arrows -->
+    <line x1="${cx}" y1="${cy-hw}" x2="${cx+1}" y2="${cy-hw}" 
+          stroke="${strokeCol}" stroke-width="2" marker-end="url(#arr)"/>
+    <!-- Area label -->
+    <text x="${cx}" y="${cy+4}" text-anchor="middle" fill="${strokeCol}" font-size="10" opacity="0.8">
+      ${side.toFixed(1)} × ${side.toFixed(1)} cm
+    </text>
+    <!-- Corner dots -->
+    <circle cx="${cx-hw}" cy="${cy-hw}" r="3" fill="${strokeCol}" opacity="0.8"/>
+    <circle cx="${cx+hw}" cy="${cy-hw}" r="3" fill="${strokeCol}" opacity="0.8"/>
+    <circle cx="${cx+hw}" cy="${cy+hw}" r="3" fill="${strokeCol}" opacity="0.8"/>
+    <circle cx="${cx-hw}" cy="${cy+hw}" r="3" fill="${strokeCol}" opacity="0.8"/>
+    <!-- Dimension lines -->
+    <line x1="${cx-hw}" y1="${cy+hw+8}" x2="${cx+hw}" y2="${cy+hw+8}" stroke="#2a4050" stroke-width="1"/>
+    <text x="${cx}" y="${cy+hw+20}" text-anchor="middle" fill="#8ab4c8" font-size="8">
+      A = ${(p.A*1e4).toFixed(1)} cm²
+    </text>
+    <!-- di/dt indicator -->
+    <text x="${cx}" y="14" text-anchor="middle" fill="#ff6b35" font-size="9">
+      di/dt = ${(p.I/p.tr/1e6).toFixed(0)} MA/s
+    </text>
+  `;
+}
+
+function drawFieldGradient(E_fund, r) {
+  const canvas = document.getElementById('fieldCanvas');
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.parentElement ? canvas.parentElement.offsetWidth / 2 - 10 : 200;
+  const H = 160;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = (W) + 'px';
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+
+  // Draw radial field strength gradient from center
+  const cx = W * 0.3, cy = H * 0.5;
+  const maxR = Math.min(W, H) * 0.85;
+
+  // Field at distance d scales as 1/d from source
+  for (let px = 0; px < W; px++) {
+    for (let py = 0; py < H; py++) {
+      const dx = px - cx, dy = py - cy;
+      const d = Math.sqrt(dx * dx + dy * dy) || 0.1;
+      const scaledR = (d / maxR) * 10; // 0 to 10m
+      const E_here = (E_fund * r) / scaledR;
+      const ratio = Math.min(1, E_here / (CISPR_LIMIT_VpM * 2));
+      // Color: green → yellow → red
+      let red, green, blue;
+      if (ratio < 0.5) {
+        red = Math.round(ratio * 2 * 255);
+        green = 200;
+        blue = 80;
+      } else {
+        red = 255;
+        green = Math.round((1 - (ratio - 0.5) * 2) * 200);
+        blue = 0;
+      }
+      ctx.fillStyle = `rgba(${red},${green},${blue},0.85)`;
+      ctx.fillRect(px, py, 1, 1);
+    }
+  }
+
+  // Draw measurement distance marker
+  const measPixR = (r / 10) * maxR;
+  ctx.strokeStyle = 'rgba(255,204,0,0.8)';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([4, 3]);
+  ctx.beginPath();
+  ctx.arc(cx, cy, measPixR, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // CISPR compliance circle
+  // Find the radius where E = CISPR limit
+  const complianceR = (E_fund * r) / CISPR_LIMIT_VpM;
+  const compPixR = Math.min(maxR * 1.5, (complianceR / 10) * maxR);
+  if (compPixR > 2 && compPixR < maxR * 1.5) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([2, 2]);
+    ctx.beginPath();
+    ctx.arc(cx, cy, Math.min(compPixR, maxR), 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Loop at center
+  ctx.fillStyle = '#00e5ff';
+  ctx.shadowColor = '#00e5ff';
+  ctx.shadowBlur = 12;
+  ctx.fillRect(cx - 5, cy - 5, 10, 10);
+  ctx.shadowBlur = 0;
+
+  // Labels
+  ctx.fillStyle = '#ffcc00';
+  ctx.font = `${8 * dpr / dpr}px Share Tech Mono`;
+  ctx.fillText(`${r.toFixed(1)}m`, cx + measPixR + 3, cy - 3);
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.fillText('LOOP', cx - 12, cy + 18);
+}
+
+// Initial render
+update();
+window.addEventListener('resize', () => {
+  const p = getParams();
+  const harmonics = [];
+  for (let n = 1; n <= 5; n++) {
+    const fn = n * p.f0;
+    const I_n = harmonicCurrent(p.I, n, p.f0, p.tr);
+    const E = calcE(p.A, I_n, fn, p.r);
+    harmonics.push({ n, fn, I_n, E, dB: toDBuVm(E) });
+  }
+  drawSpectrum(harmonics);
+  drawFieldGradient(harmonics[0].E, p.r);
+});
+
+function toggleRef() {
+  const panel = document.getElementById('refPanel');
+  const arrow = document.getElementById('refArrow');
+  const btn   = document.getElementById('refToggleBtn');
+  if (panel.style.display === 'none') {
+    panel.style.display = 'block';
+    arrow.textContent = 'COLLAPSE ↑';
+    btn.style.borderColor = 'var(--accent)';
+    btn.style.borderRadius = '4px 4px 0 0';
+  } else {
+    panel.style.display = 'none';
+    arrow.textContent = 'EXPAND ↓';
+    btn.style.borderColor = 'var(--border)';
+    btn.style.borderRadius = '4px';
+  }
+}
+</script>
+
+<style>
+.ref-block {
+  background: rgba(0,229,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 16px 18px;
+}
+.ref-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 10px;
+  color: var(--accent);
+  letter-spacing: 2px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.ref-body {
+  font-size: 11.5px;
+  color: #8ab4c8;
+  line-height: 1.8;
+}
+.eq {
+  display: block;
+  font-family: 'Share Tech Mono', monospace;
+  color: #e0f4ff;
+  background: rgba(0,0,0,0.3);
+  border-left: 2px solid var(--accent);
+  padding: 3px 10px;
+  margin: 4px 0;
+  border-radius: 0 2px 2px 0;
+  font-size: 12px;
+}
+.ref-note {
+  display: block;
+  margin-top: 8px;
+  font-size: 10.5px;
+  color: var(--dim);
+  font-style: italic;
+  border-left: 2px solid var(--accent2);
+  padding-left: 8px;
+  opacity: 0.85;
+}
+#refToggleBtn:hover {
+  border-color: var(--accent) !important;
+  background: rgba(0,229,255,0.05);
+}
+</style>
+
+<div style="max-width:1200px;margin:12px auto 40px auto;padding:0 0px;">
+  <button onclick="toggleRef()" id="refToggleBtn"
+    style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--accent);
+           font-family:'Orbitron',monospace;font-size:11px;letter-spacing:3px;padding:12px 20px;
+           cursor:pointer;text-align:left;border-radius:4px;transition:all 0.2s;outline:none;">
+    &#9658; FORMULA REFERENCE &amp; DERIVATION NOTES
+    <span id="refArrow" style="float:right;opacity:0.5;font-size:10px;">EXPAND &#8595;</span>
+  </button>
+
+  <div id="refPanel" style="display:none;background:var(--panel);border:1px solid var(--border);border-top:none;border-radius:0 0 4px 4px;padding:20px;">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;">
+
+      <div class="ref-block">
+        <div class="ref-title">&#9312; RC DISCHARGE &mdash; PEAK CURRENT &amp; RISE TIME</div>
+        <div class="ref-body">
+          Capacitor C charged to V discharging through resistor R:<br>
+          <span class="eq">I(t) = (V / R) &middot; e<sup>&minus;t/&tau;</sup></span>
+          <span class="eq">I<sub>peak</sub> = V / R &nbsp;&nbsp;[at t = 0]</span>
+          <span class="eq">&tau; = R &middot; C &nbsp;&nbsp;[time constant, seconds]</span>
+          <span class="eq">t<sub>r</sub> = 2.2 &middot; R &middot; C &nbsp;&nbsp;[10%&rarr;90% rise time]</span>
+          <span class="eq">di/dt|<sub>peak</sub> = I<sub>peak</sub> / t<sub>r</sub> = V / (2.2 &middot; R&sup2; &middot; C)</span>
+          <span class="ref-note">Ceramic caps (X5R/X7R) preferred: very low ESR/ESL lets the RC time constant dominate rise time. Electrolytics add parasitic inductance that distorts the current edge.</span>
+        </div>
+      </div>
+
+      <div class="ref-block">
+        <div class="ref-title">&#9313; MAGNETIC DIPOLE MOMENT</div>
+        <div class="ref-body">
+          A current loop on PCB acts as a magnetic dipole:<br>
+          <span class="eq">m(t) = I(t) &middot; A &nbsp;&nbsp;[A&middot;m&sup2;]</span>
+          <span class="eq">m<sub>peak</sub> = I<sub>peak</sub> &middot; A</span>
+          Loop area A is enclosed by the high-di/dt current path and its PCB return.<br>
+          <span class="ref-note">Minimising loop area is the highest-leverage EMI fix. Placing the return path on the adjacent layer directly beneath the power trace achieves near-field cancellation.</span>
+        </div>
+      </div>
+
+      <div class="ref-block">
+        <div class="ref-title">&#9314; RADIATED E-FIELD &mdash; FAR FIELD FORMULA</div>
+        <div class="ref-body">
+          From Maxwell's equations for a small magnetic dipole:<br>
+          <span class="eq">E = (&mu;<sub>0</sub> &middot; A &middot; I &middot; (2&pi;f)&sup2;) / (4&pi; &middot; r &middot; c)</span>
+          Substituting &mu;<sub>0</sub> = 4&pi;&times;10<sup>&minus;7</sup>, c = 3&times;10<sup>8</sup>:<br>
+          <span class="eq">E(f) = 131&times;10<sup>&minus;16</sup> &middot; A &middot; I &middot; f&sup2; / r &nbsp;&nbsp;[V/m]</span>
+          A [m&sup2;] &middot; I [A] &middot; f [Hz] &middot; r [m]<br>
+          <span class="ref-note">Valid for far-field (r &gg; &lambda;/2&pi;). At 200 kHz, &lambda;/2&pi; &asymp; 240 m, so at r = 3 m we are in near-field &mdash; the formula overestimates, giving a conservative safety margin for pre-compliance use.</span>
+        </div>
+      </div>
+
+      <div class="ref-block">
+        <div class="ref-title">&#9315; HARMONIC CURRENT &mdash; TRAPEZOIDAL WAVEFORM</div>
+        <div class="ref-body">
+          Fourier envelope of n-th harmonic for trapezoidal switching:<br>
+          <span class="eq">I<sub>n</sub> = I<sub>peak</sub> &middot; (2/n&pi;) &middot; |sinc(n &middot; &pi; &middot; t<sub>r</sub> &middot; f<sub>0</sub>)|</span>
+          where sinc(x) = sin(x)/x. Spectral breakpoints:<br>
+          <span class="eq">f<sub>b1</sub> = 1/(&pi; &middot; t<sub>pulse</sub>) &nbsp;[&minus;20 dB/dec starts]</span>
+          <span class="eq">f<sub>b2</sub> = 1/(&pi; &middot; t<sub>r</sub>) &nbsp;&nbsp;&nbsp;[&minus;40 dB/dec starts]</span>
+          <span class="ref-note">Slowing edges (larger R) raises t_r, pushing f_b2 lower and cutting harmonic content. You get EMI reduction from both lower I_peak and slower edges simultaneously.</span>
+        </div>
+      </div>
+
+      <div class="ref-block">
+        <div class="ref-title">&#9316; E-FIELD PER HARMONIC &amp; KEY SENSITIVITIES</div>
+        <div class="ref-body">
+          Each harmonic n radiates at f<sub>n</sub> = n&middot;f<sub>0</sub>:<br>
+          <span class="eq">E<sub>n</sub> = 131&times;10<sup>&minus;16</sup> &middot; A &middot; I<sub>n</sub> &middot; f<sub>n</sub>&sup2; / r</span>
+          With f<sub>n</sub> = n&middot;f<sub>0</sub> and I<sub>n</sub> &prop; 1/n at low harmonics:<br>
+          <span class="eq">E<sub>n</sub> &prop; n &middot; f<sub>0</sub>&sup2; &middot; A &middot; I<sub>peak</sub> / r</span>
+          <span class="eq">E &prop; f&sup2; &nbsp;(quadratic &mdash; 2&times; freq = 4&times; field)</span>
+          <span class="eq">E &prop; A &nbsp;&nbsp;(linear &mdash; half area = half field)</span>
+          <span class="eq">E &prop; I &nbsp;&nbsp;(linear &mdash; half current = half field)</span>
+          <span class="ref-note">f&sup2; dependence is why higher harmonics often dominate despite lower current amplitude. Always check all harmonics against the limit, not just the fundamental.</span>
+        </div>
+      </div>
+
+      <div class="ref-block">
+        <div class="ref-title">&#9317; dB&micro;V/m CONVERSION &amp; CISPR CLASS B LIMITS</div>
+        <div class="ref-body">
+          Convert E-field from V/m to dB&micro;V/m:<br>
+          <span class="eq">E [dB&micro;V/m] = 20 &middot; log<sub>10</sub>(E [V/m] &times; 10<sup>6</sup>)</span>
+          <span class="eq">E [V/m] = 10<sup>(E[dB&micro;V/m]/20)</sup> &times; 10<sup>&minus;6</sup></span>
+          CISPR 32 / EN 55032 Class B limits at 3 m measurement distance:<br>
+          <span class="eq">30 MHz &ndash; 230 MHz: &nbsp;&nbsp;40 dB&micro;V/m</span>
+          <span class="eq">230 MHz &ndash; 1 GHz: &nbsp;47 dB&micro;V/m</span>
+          <span class="ref-note">This tool uses 40 dB&micro;V/m as a single conservative reference across all frequencies. For full pre-compliance, apply the correct limit per band per harmonic.</span>
+        </div>
+      </div>
+
+      <div class="ref-block">
+        <div class="ref-title">&#9318; LOOP INDUCTANCE &mdash; PCB TRACE ESTIMATE</div>
+        <div class="ref-body">
+          For a square loop side s, trace width w:<br>
+          <span class="eq">L &asymp; (2&mu;<sub>0</sub>/&pi;) &middot; s &middot; [ln(2s/w) &minus; 0.774]</span>
+          Simplified engineering rule:<br>
+          <span class="eq">L &asymp; 10 nH per cm of loop perimeter</span>
+          Inductive voltage spike at turn-off:<br>
+          <span class="eq">V<sub>spike</sub> = L &middot; di/dt = L &middot; I<sub>peak</sub> / t<sub>r</sub></span>
+          <span class="ref-note">Example: 15 A, 50 nH loop, 50 ns rise time &rarr; V_spike = 15 V on top of bus voltage. This directly stresses MOSFET V_ds. Reducing loop area fixes both EMI and switch stress simultaneously.</span>
+        </div>
+      </div>
+
+      <div class="ref-block">
+        <div class="ref-title">&#9319; CAPACITOR ENERGY, CHARGE &amp; THERMAL</div>
+        <div class="ref-body">
+          Energy stored before each discharge:<br>
+          <span class="eq">E<sub>stored</sub> = &frac12; &middot; C &middot; V&sup2;</span>
+          Charge delivered per cycle:<br>
+          <span class="eq">Q = C &middot; V</span>
+          Average power dissipated in R at frequency f<sub>0</sub>:<br>
+          <span class="eq">P<sub>R</sub> = &frac12; &middot; C &middot; V&sup2; &middot; f<sub>0</sub></span>
+          <span class="ref-note">Exactly half the stored energy is lost in R per discharge, regardless of R's value &mdash; a fundamental result of RC circuits. R only controls delivery speed. Use this to size R's power rating for continuous operation.</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
