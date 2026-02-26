@@ -260,6 +260,376 @@
   <h1>PCB EMI LOOP RADIATION</h1>
   <div class="subtitle">MAGNETIC DIPOLE FIELD STRENGTH CALCULATOR · CISPR CLASS B COMPLIANCE</div>
 
+  <!-- PROBLEM STATEMENT SECTION -->
+  <div class="panel" style="margin-bottom:16px;">
+    <div style="display:grid;grid-template-columns:1fr 400px;gap:28px;align-items:start;">
+
+      <!-- Left: text -->
+      <div>
+        <div style="font-family:'Orbitron',monospace;font-size:9px;color:var(--accent2);letter-spacing:3px;margin-bottom:10px;">THE PROBLEM WE ARE SOLVING</div>
+        <div style="font-family:'Orbitron',monospace;font-size:16px;font-weight:700;color:#e0f4ff;line-height:1.5;margin-bottom:14px;">
+          What value &amp; position of series resistor in a bootstrap RC circuit minimises radiated EMI?
+        </div>
+        <div style="font-size:12px;color:#8ab4c8;line-height:1.9;">
+          In gate-drive and bootstrap circuits, a capacitor pre-charged to supply voltage V is switched into a load through a series resistor R. At the moment of switching, the capacitor discharges and drives a fast current pulse &mdash; a high <span style="color:var(--accent);">di/dt</span> event &mdash; through whatever loop the PCB layout creates.<br><br>
+          This current loop behaves as a <span style="color:var(--accent);">magnetic dipole antenna</span>. The resistor R is the critical design variable because it simultaneously controls three parameters that govern EMI:
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:14px 0;">
+          <div style="background:rgba(0,229,255,0.06);border:1px solid rgba(0,229,255,0.2);border-radius:3px;padding:10px;">
+            <div style="font-family:'Orbitron',monospace;font-size:8px;color:var(--accent);margin-bottom:6px;letter-spacing:1px;">PEAK CURRENT</div>
+            <div style="font-size:13px;color:#e0f4ff;font-family:'Share Tech Mono',monospace;">I = V / R</div>
+            <div style="font-size:10px;color:var(--dim);margin-top:4px;">Larger R reduces I linearly</div>
+          </div>
+          <div style="background:rgba(255,107,53,0.06);border:1px solid rgba(255,107,53,0.2);border-radius:3px;padding:10px;">
+            <div style="font-family:'Orbitron',monospace;font-size:8px;color:var(--accent2);margin-bottom:6px;letter-spacing:1px;">RISE TIME</div>
+            <div style="font-size:13px;color:#e0f4ff;font-family:'Share Tech Mono',monospace;">t&#7523; = 2.2RC</div>
+            <div style="font-size:10px;color:var(--dim);margin-top:4px;">Larger R slows edges, cuts harmonics</div>
+          </div>
+          <div style="background:rgba(255,45,85,0.06);border:1px solid rgba(255,45,85,0.2);border-radius:3px;padding:10px;">
+            <div style="font-family:'Orbitron',monospace;font-size:8px;color:var(--danger);margin-bottom:6px;letter-spacing:1px;">EMI FIELD</div>
+            <div style="font-size:13px;color:#e0f4ff;font-family:'Share Tech Mono',monospace;">E &#8733; I &middot; f&sup2;</div>
+            <div style="font-size:10px;color:var(--dim);margin-top:4px;">R reduces E from both effects</div>
+          </div>
+        </div>
+
+        <div style="font-size:12px;color:#8ab4c8;line-height:1.9;">
+          The <span style="color:var(--warn);">trade-off</span>: R too small &rarr; fast harsh switching, large EMI spike, MOSFET gate stress. R too large &rarr; slow gate drive, excess thermal loss (P = &frac12;CV&sup2;&middot;f&#8320; per cycle) and potential bootstrap timing issues. Use the calculator below to find the optimal balance.
+        </div>
+      </div>
+
+      <!-- Right: SVG circuit diagram -->
+      <div>
+        <div style="font-size:9px;color:#8ab4c8;letter-spacing:2px;margin-bottom:8px;">HALF-BRIDGE BOOTSTRAP CIRCUIT — STANDARD TOPOLOGY</div>
+
+        <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:8px;font-size:9px;">
+          <span style="color:#00ff88;">&#9473;&#9473; Charge path (Q_LS ON, SW=GND)</span>
+          <span style="color:#ff6b35;">&#9473;&#9473; Discharge / di/dt path (Q_HS turns ON)</span>
+          <span style="color:#ff2d55;">&#9135; &#9135; PCB loop = radiating antenna</span>
+        </div>
+
+        <svg viewBox="0 0 540 400" style="width:100%;background:rgba(0,0,0,0.28);border-radius:3px;border:1px solid var(--border);" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="aG" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,1 L7,4 L0,7 Z" fill="#00ff88"/></marker>
+            <marker id="aO" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,1 L7,4 L0,7 Z" fill="#ff6b35"/></marker>
+            <filter id="glo"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            <filter id="gloR"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          </defs>
+
+          <!-- ══════════════════════════════════════════ -->
+          <!--  POWER BUS                                 -->
+          <!-- ══════════════════════════════════════════ -->
+          <!-- HV Bus top (motor bus / battery) -->
+          <line x1="30" y1="25" x2="510" y2="25" stroke="#2a4060" stroke-width="2"/>
+          <text x="32" y="17" fill="#4a6070" font-size="8" font-family="Share Tech Mono,monospace">HV BUS (V_BUS)</text>
+
+          <!-- GND bottom -->
+          <line x1="30" y1="375" x2="510" y2="375" stroke="#2a4060" stroke-width="2"/>
+          <text x="32" y="388" fill="#4a6070" font-size="8" font-family="Share Tech Mono,monospace">GND / POWER GROUND</text>
+
+          <!-- VCC supply (gate driver bias, separate from HV bus) -->
+          <!-- VCC node at x=90, comes in from left -->
+          <line x1="30" y1="70" x2="90" y2="70" stroke="#1a3050" stroke-width="1.5"/>
+          <text x="32" y="65" fill="#8ab4c8" font-size="8" font-family="Share Tech Mono,monospace">VCC (bias)</text>
+          <!-- VCC decoupling cap C_VCC -->
+          <line x1="55" y1="70"  x2="55" y2="88"  stroke="#8ab4c8" stroke-width="1.5"/>
+          <line x1="40" y1="88"  x2="70" y2="88"  stroke="#8ab4c8" stroke-width="2.5"/>
+          <line x1="40" y1="97"  x2="70" y2="97"  stroke="#8ab4c8" stroke-width="2.5"/>
+          <line x1="55" y1="97"  x2="55" y2="115" stroke="#8ab4c8" stroke-width="1.5"/>
+          <line x1="55" y1="115" x2="55" y2="375" stroke="#2a4060" stroke-width="1.5" stroke-dasharray="3,4"/>
+          <text x="73" y="90" fill="#8ab4c8" font-size="7" font-family="Share Tech Mono,monospace">C_VCC</text>
+          <text x="73" y="100" fill="#4a6070" font-size="7" font-family="Share Tech Mono,monospace">1µF X7R</text>
+
+          <!-- ══════════════════════════════════════════ -->
+          <!--  R_BOOT: VCC → R_BOOT → anode of D_BOOT   -->
+          <!-- ══════════════════════════════════════════ -->
+          <line x1="90" y1="70" x2="108" y2="70" stroke="#ff6b35" stroke-width="2"/>
+          <!-- Zigzag R_BOOT horizontal -->
+          <polyline points="108,70 113,63 121,77 129,63 137,77 145,63 153,77 158,70"
+            fill="none" stroke="#ff6b35" stroke-width="2.5" filter="url(#gloR)"/>
+          <line x1="158" y1="70" x2="180" y2="70" stroke="#ff6b35" stroke-width="2"/>
+          <text x="120" y="57" fill="#ff6b35" font-size="9" font-family="Share Tech Mono,monospace" font-weight="bold">R_BOOT</text>
+          <text x="120" y="48" fill="#ff2d55" font-size="7" font-family="Share Tech Mono,monospace">← limits I_peak, sets t_r = 2.2·R·C</text>
+
+          <!-- ══════════════════════════════════════════ -->
+          <!--  D_BOOT: anode(180,70) → cathode(230,70)  -->
+          <!--  Current flows left→right (charge)        -->
+          <!-- ══════════════════════════════════════════ -->
+          <!-- Diode triangle (anode left, cathode right) -->
+          <polygon points="180,58 180,82 205,70" fill="rgba(0,229,255,0.18)" stroke="#00e5ff" stroke-width="1.8"/>
+          <line x1="205" y1="58" x2="205" y2="82" stroke="#00e5ff" stroke-width="2.5"/>
+          <line x1="205" y1="70" x2="235" y2="70" stroke="#00e5ff" stroke-width="2"/>
+          <text x="183" y="95" fill="#00e5ff" font-size="9"  font-family="Share Tech Mono,monospace" font-weight="bold">D_BOOT</text>
+          <text x="183" y="107" fill="#8ab4c8" font-size="7" font-family="Share Tech Mono,monospace">Schottky / fast rec.</text>
+
+          <!-- ══════════════════════════════════════════ -->
+          <!--  HB pin node (cathode of D_BOOT)          -->
+          <!--  = top of C_BOOT                          -->
+          <!-- ══════════════════════════════════════════ -->
+          <circle cx="235" cy="70" r="4" fill="#00e5ff" filter="url(#glo)"/>
+          <!-- vertical wire down to GATE DRIVER IC HB pin -->
+          <line x1="235" y1="70" x2="235" y2="130" stroke="#00e5ff" stroke-width="2"/>
+
+          <!-- ══════════════════════════════════════════ -->
+          <!--  GATE DRIVER IC (box)                     -->
+          <!-- ══════════════════════════════════════════ -->
+          <rect x="195" y="130" width="120" height="120" rx="3"
+            fill="rgba(0,229,255,0.05)" stroke="#1a3050" stroke-width="2"/>
+          <text x="255" y="150" fill="#8ab4c8" font-size="9" font-family="Share Tech Mono,monospace" text-anchor="middle" font-weight="bold">GATE</text>
+          <text x="255" y="162" fill="#8ab4c8" font-size="9" font-family="Share Tech Mono,monospace" text-anchor="middle" font-weight="bold">DRIVER IC</text>
+          <text x="255" y="178" fill="#4a6070" font-size="7" font-family="Share Tech Mono,monospace" text-anchor="middle">e.g. IR2110</text>
+          <text x="255" y="188" fill="#4a6070" font-size="7" font-family="Share Tech Mono,monospace" text-anchor="middle">UCC27710</text>
+
+          <!-- IC pins labels -->
+          <!-- HB pin (top-left of IC) -->
+          <text x="198" y="142" fill="#00e5ff" font-size="7" font-family="Share Tech Mono,monospace">HB</text>
+          <!-- HS pin (bottom-left of IC) -->
+          <text x="198" y="242" fill="#ffcc00" font-size="7" font-family="Share Tech Mono,monospace">HS</text>
+          <!-- HO pin (right of IC, high side output) -->
+          <text x="320" y="162" fill="#ff6b35" font-size="7" font-family="Share Tech Mono,monospace">HO</text>
+          <!-- LO pin (right of IC, low side output) -->
+          <text x="320" y="232" fill="#8ab4c8" font-size="7" font-family="Share Tech Mono,monospace">LO</text>
+          <!-- VCC pin -->
+          <text x="198" y="195" fill="#8ab4c8" font-size="7" font-family="Share Tech Mono,monospace">VCC</text>
+
+          <!-- VCC into IC -->
+          <line x1="90" y1="70" x2="90" y2="192" stroke="#8ab4c8" stroke-width="1.5" stroke-dasharray="4,3"/>
+          <line x1="90"  y1="192" x2="195" y2="192" stroke="#8ab4c8" stroke-width="1.5" stroke-dasharray="4,3"/>
+
+          <!-- ══════════════════════════════════════════ -->
+          <!--  C_BOOT: HB(235,70) down to HS(235,248)  -->
+          <!-- ══════════════════════════════════════════ -->
+          <!-- wire from HB node down to C_BOOT top -->
+          <line x1="235" y1="130" x2="235" y2="155" stroke="#00e5ff" stroke-width="2" filter="url(#glo)"/>
+          <!-- C_BOOT plates -->
+          <line x1="215" y1="155" x2="255" y2="155" stroke="#00e5ff" stroke-width="3.5"/>
+          <line x1="215" y1="167" x2="255" y2="167" stroke="#00e5ff" stroke-width="3.5"/>
+          <!-- wire C_BOOT bottom to HS node -->
+          <line x1="235" y1="167" x2="235" y2="248" stroke="#00e5ff" stroke-width="2" filter="url(#glo)"/>
+          <!-- C_BOOT label -->
+          <text x="260" y="158" fill="#00e5ff" font-size="10" font-family="Share Tech Mono,monospace" font-weight="bold">C_BOOT</text>
+          <text x="260" y="170" fill="#8ab4c8" font-size="7"  font-family="Share Tech Mono,monospace">100nF X7R ceramic</text>
+          <!-- + - markers -->
+          <text x="208" y="153" fill="#00ff88" font-size="10" font-family="Share Tech Mono,monospace">+</text>
+          <text x="208" y="172" fill="#4a6070" font-size="10" font-family="Share Tech Mono,monospace">-</text>
+
+          <!-- ══════════════════════════════════════════ -->
+          <!--  HS pin = SW node                         -->
+          <!-- ══════════════════════════════════════════ -->
+          <!-- HS pin wire from IC bottom-left to SW node -->
+          <line x1="195" y1="248" x2="235" y2="248" stroke="#ffcc00" stroke-width="2"/>
+          <circle cx="235" cy="248" r="4" fill="#ffcc00" filter="url(#glo)"/>
+          <!-- SW node label -->
+          <text x="240" y="244" fill="#ffcc00" font-size="8" font-family="Share Tech Mono,monospace" font-weight="bold">SW NODE</text>
+
+          <!-- SW node goes right to connect Q_HS source / Q_LS drain -->
+          <line x1="235" y1="248" x2="420" y2="248" stroke="#ffcc00" stroke-width="2.5"/>
+
+          <!-- ══════════════════════════════════════════ -->
+          <!--  HO → R_G → Q_HS gate                    -->
+          <!-- ══════════════════════════════════════════ -->
+          <!-- HO wire out from IC right -->
+          <line x1="315" y1="158" x2="350" y2="158" stroke="#ff6b35" stroke-width="2"/>
+          <!-- R_G zigzag horizontal -->
+          <polyline points="350,158 355,152 363,164 371,152 379,164 387,152 395,164 400,158"
+            fill="none" stroke="#ff6b35" stroke-width="2.5" filter="url(#gloR)"/>
+          <line x1="400" y1="158" x2="420" y2="158" stroke="#ff6b35" stroke-width="2"/>
+          <text x="360" y="147" fill="#ff6b35" font-size="8" font-family="Share Tech Mono,monospace">R_G</text>
+
+          <!-- ══════════════════════════════════════════ -->
+          <!--  Q_HS (high side MOSFET)                  -->
+          <!--  Drain=HV bus(420,25), Source=SW(420,248) -->
+          <!--  Gate=(420,158)                           -->
+          <!-- ══════════════════════════════════════════ -->
+          <!-- Drain wire -->
+          <line x1="420" y1="25"  x2="420" y2="118" stroke="#c77dff" stroke-width="2"/>
+          <!-- MOSFET body symbol (N-ch enhancement) -->
+          <!-- Drain bar -->
+          <line x1="420" y1="118" x2="420" y2="138" stroke="#c77dff" stroke-width="1.5"/>
+          <!-- Channel -->
+          <line x1="420" y1="138" x2="420" y2="178" stroke="#c77dff" stroke-width="5"/>
+          <!-- Gate insulator -->
+          <line x1="408" y1="132" x2="408" y2="184" stroke="#c77dff" stroke-width="1.5"/>
+          <!-- Gate stub -->
+          <line x1="408" y1="158" x2="420" y2="158" stroke="#c77dff" stroke-width="1.5"/>
+          <!-- Arrow (N-ch, pointing into channel) -->
+          <polygon points="420,183 414,192 426,192" fill="#c77dff"/>
+          <!-- Source wire -->
+          <line x1="420" y1="192" x2="420" y2="248" stroke="#c77dff" stroke-width="2"/>
+          <!-- Body diode Q_HS -->
+          <line x1="435" y1="140" x2="435" y2="245" stroke="#c77dff" stroke-width="1" stroke-dasharray="3,3" opacity="0.5"/>
+          <!-- MOSFET label -->
+          <text x="438" y="155" fill="#c77dff" font-size="9" font-family="Share Tech Mono,monospace" font-weight="bold">Q_HS</text>
+          <text x="438" y="167" fill="#8ab4c8" font-size="7" font-family="Share Tech Mono,monospace">High Side</text>
+          <!-- HV bus dot -->
+          <circle cx="420" cy="25" r="3" fill="#4a6070"/>
+
+          <!-- ══════════════════════════════════════════ -->
+          <!--  Q_LS (low side MOSFET)                   -->
+          <!--  Drain=SW(420,248), Source=GND(420,375)   -->
+          <!-- ══════════════════════════════════════════ -->
+          <line x1="420" y1="248" x2="420" y2="268" stroke="#8ab4c8" stroke-width="2"/>
+          <line x1="420" y1="268" x2="420" y2="288" stroke="#8ab4c8" stroke-width="1.5"/>
+          <!-- LS channel -->
+          <line x1="420" y1="288" x2="420" y2="328" stroke="#8ab4c8" stroke-width="5"/>
+          <!-- LS gate insulator -->
+          <line x1="408" y1="282" x2="408" y2="334" stroke="#8ab4c8" stroke-width="1.5"/>
+          <!-- LS gate stub -->
+          <line x1="370" y1="308" x2="408" y2="308" stroke="#8ab4c8" stroke-width="1.5"/>
+          <!-- LO from IC -->
+          <line x1="315" y1="228" x2="370" y2="228" stroke="#8ab4c8" stroke-width="1.5"/>
+          <line x1="370" y1="228" x2="370" y2="308" stroke="#8ab4c8" stroke-width="1.5"/>
+          <!-- LS gate R (small, optional) -->
+          <text x="330" y="224" fill="#8ab4c8" font-size="7" font-family="Share Tech Mono,monospace">R_G_LS</text>
+          <!-- LS arrow -->
+          <polygon points="420,333 414,342 426,342" fill="#8ab4c8"/>
+          <!-- LS source to GND -->
+          <line x1="420" y1="342" x2="420" y2="375" stroke="#8ab4c8" stroke-width="2"/>
+          <circle cx="420" cy="375" r="3" fill="#4a6070"/>
+          <!-- LS label -->
+          <text x="438" y="305" fill="#8ab4c8" font-size="9" font-family="Share Tech Mono,monospace" font-weight="bold">Q_LS</text>
+          <text x="438" y="317" fill="#8ab4c8" font-size="7" font-family="Share Tech Mono,monospace">Low Side</text>
+
+          <!-- Load / Output label at SW node -->
+          <text x="420" y="260" fill="#ffcc00" font-size="7" font-family="Share Tech Mono,monospace" text-anchor="middle">⬆ OUTPUT</text>
+
+          <!-- ══════════════════════════════════════════ -->
+          <!--  CHARGE PATH (green dashed arrows)        -->
+          <!--  VCC→R_BOOT→D_BOOT→C_BOOT+→C_BOOT-→SW   -->
+          <!--  →Q_LS→GND  (when Q_LS ON)               -->
+          <!-- ══════════════════════════════════════════ -->
+          <!-- arrow along top from VCC to D_BOOT -->
+          <line x1="92" y1="67" x2="174" y2="67" stroke="#00ff88" stroke-width="1.5" stroke-dasharray="6,3" marker-end="url(#aG)"/>
+          <!-- arrow from D_BOOT cathode down through C_BOOT -->
+          <line x1="235" y1="72" x2="235" y2="152" stroke="#00ff88" stroke-width="1.5" stroke-dasharray="6,3" marker-end="url(#aG)"/>
+          <!-- arrow from C_BOOT- down to SW -->
+          <line x1="232" y1="170" x2="232" y2="245" stroke="#00ff88" stroke-width="1.5" stroke-dasharray="6,3" marker-end="url(#aG)"/>
+          <!-- arrow from SW left along bottom through Q_LS to GND -->
+          <path d="M 418,250 Q 418,340 418,373" fill="none" stroke="#00ff88" stroke-width="1.5" stroke-dasharray="6,3" marker-end="url(#aG)"/>
+          <!-- Charge path label -->
+          <text x="32" y="300" fill="#00ff88" font-size="8" font-family="Share Tech Mono,monospace" transform="rotate(-90,32,300)">CHARGE PATH — Q_LS ON</text>
+
+          <!-- ══════════════════════════════════════════ -->
+          <!--  DISCHARGE / EMI PATH (orange dashed)     -->
+          <!--  C_BOOT+ → gate driver HB pin → HO →     -->
+          <!--  R_G → Q_HS gate → Q_HS channel →        -->
+          <!--  SW → C_BOOT-   (when Q_HS turns ON)     -->
+          <!-- ══════════════════════════════════════════ -->
+          <path d="M 238,158 Q 280,158 348,158" fill="none" stroke="#ff6b35" stroke-width="1.8" stroke-dasharray="5,3" marker-end="url(#aO)"/>
+          <path d="M 402,160 Q 417,160 417,192" fill="none" stroke="#ff6b35" stroke-width="1.8" stroke-dasharray="5,3" marker-end="url(#aO)"/>
+          <path d="M 417,192 Q 417,248 238,248" fill="none" stroke="#ff6b35" stroke-width="1.8" stroke-dasharray="5,3" marker-end="url(#aO)"/>
+          <!-- Discharge label -->
+          <text x="320" y="265" fill="#ff6b35" font-size="7" font-family="Share Tech Mono,monospace">di/dt discharge loop</text>
+
+          <!-- ══════════════════════════════════════════ -->
+          <!--  PCB LOOP AREA (red dashed box)           -->
+          <!--  = C_BOOT → gate driver → R_G → Q_HS     -->
+          <!--    gate → Q_HS channel → SW → C_BOOT      -->
+          <!-- ══════════════════════════════════════════ -->
+          <rect x="192" y="145" width="248" height="115" rx="4"
+            fill="rgba(255,45,85,0.04)" stroke="#ff2d55" stroke-width="1.8" stroke-dasharray="7,3"/>
+          <text x="196" y="272" fill="#ff2d55" font-size="8" font-family="Share Tech Mono,monospace">PCB LOOP AREA A — minimise to reduce EMI   E ∝ A · I · f²</text>
+
+          <!-- EMI radiation arcs from loop centre -->
+          <path d="M 340,190 Q 362,173 362,193 Q 362,213 340,200" fill="none" stroke="#ff2d55" stroke-width="1.5" opacity="0.8"/>
+          <path d="M 340,190 Q 380,165 380,193 Q 380,221 340,200" fill="none" stroke="#ff2d55" stroke-width="1.2" opacity="0.5"/>
+          <path d="M 340,190 Q 400,155 400,193 Q 400,231 340,200" fill="none" stroke="#ff2d55" stroke-width="1"   opacity="0.3"/>
+          <text x="406" y="183" fill="#ff2d55" font-size="8" font-family="Share Tech Mono,monospace">EMI</text>
+
+          <!-- di/dt annotation -->
+          <text x="197" y="140" fill="#ffcc00" font-size="7" font-family="Share Tech Mono,monospace">di/dt = V/(2.2·R_BOOT²·C_BOOT)</text>
+
+          <!-- State annotations -->
+          <text x="32" y="350" fill="#00ff88"  font-size="7" font-family="Share Tech Mono,monospace">① Q_LS ON  → SW=GND → C_BOOT charges via D_BOOT</text>
+          <text x="32" y="362" fill="#ff6b35" font-size="7" font-family="Share Tech Mono,monospace">② Q_HS ON → C_BOOT discharges → fast I through loop → EMI</text>
+
+        </svg>
+
+        <!-- Two callout boxes below SVG -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;">
+          <div style="background:rgba(255,45,85,0.08);border:1px solid rgba(255,45,85,0.3);border-radius:3px;padding:9px 10px;">
+            <div style="font-family:'Orbitron',monospace;font-size:8px;color:var(--danger);letter-spacing:1px;margin-bottom:4px;">R_BOOT TOO SMALL</div>
+            <div style="font-size:10px;color:#8ab4c8;">Fast edge → high I_peak → large EMI &amp; V<sub>DS</sub> spike from L·di/dt in the loop</div>
+          </div>
+          <div style="background:rgba(255,204,0,0.06);border:1px solid rgba(255,204,0,0.25);border-radius:3px;padding:9px 10px;">
+            <div style="font-family:'Orbitron',monospace;font-size:8px;color:var(--warn);letter-spacing:1px;margin-bottom:4px;">R_BOOT TOO LARGE</div>
+            <div style="font-size:10px;color:#8ab4c8;">Slow C_BOOT recharge → bootstrap UVLO risk at high duty cycle · P<sub>R</sub> = ½C·V²·f₀</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+  <!-- END PROBLEM STATEMENT -->
+
+          <text x="300" y="294" fill="#8ab4c8" font-size="7"  font-family="Share Tech Mono,monospace">Low Side</text>
+          <polygon points="290,312 284,319 296,319" fill="#8ab4c8"/>
+          <!-- LS gate driver input (simple line) -->
+          <line x1="230" y1="288" x2="260" y2="288" stroke="#8ab4c8" stroke-width="1.5" stroke-dasharray="4,2"/>
+          <text x="162" y="293" fill="#8ab4c8" font-size="7" font-family="Share Tech Mono,monospace">LS gate drive</text>
+
+          <!-- GND connection for LS source -->
+          <circle cx="290" cy="350" r="3" fill="#4a6070"/>
+
+          <!-- ═══ LOAD (between VCC and SW, or SW and GND — half bridge output) ═══ -->
+          <!-- Output taken from SW node -->
+          <line x1="380" y1="228" x2="380" y2="228" stroke="#00ff88" stroke-width="1.5"/>
+          <!-- output label -->
+          <text x="305" y="222" fill="#ffcc00" font-size="8" font-family="Share Tech Mono,monospace">V_SW (output)</text>
+
+          <!-- ═══ CHARGE PATH annotation (green dashed) — when LS is ON ═══ -->
+          <!-- Path: VCC(80,20) → D_BOOT → R_BOOT → C_BOOT top → C_BOOT → SW(80,228) → LS drain → GND -->
+          <path d="M 75,20 Q 50,20 50,178 Q 50,228 75,228"
+            fill="none" stroke="#00ff88" stroke-width="1.5" stroke-dasharray="6,3" marker-end="url(#arG)"/>
+          <text x="12" y="120" fill="#00ff88" font-size="8" font-family="Share Tech Mono,monospace" transform="rotate(-90,12,120)">CHARGE PATH (LS ON)</text>
+
+          <!-- ═══ DISCHARGE / EMI PATH annotation (orange dashed) ═══ -->
+          <!-- When HS turns ON: CBOOT+ (VBOOT,80,178) → R_G → HS gate → HS channel → SW node → CBOOT- -->
+          <path d="M 82,185 Q 160,185 160,180 Q 200,155 258,180"
+            fill="none" stroke="#ff6b35" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arO)"/>
+
+          <!-- ═══ PCB LOOP AREA (dashed red box) ═══ -->
+          <!-- The fast-discharge loop: CBOOT → RBOOT → RG → HS gate → HS channel → SW → CBOOT -->
+          <rect x="56" y="170" width="240" height="70" rx="3"
+            fill="rgba(255,45,85,0.04)" stroke="#ff2d55" stroke-width="1.5" stroke-dasharray="6,3"/>
+          <text x="60" y="250" fill="#ff2d55" font-size="8" font-family="Share Tech Mono,monospace">PCB LOOP AREA A — fast di/dt path → radiates EMI</text>
+
+          <!-- EMI radiation arcs from loop -->
+          <path d="M 170,168 Q 192,148 192,168 Q 192,188 170,175" fill="none" stroke="#ff2d55" stroke-width="1.5" opacity="0.8"/>
+          <path d="M 170,168 Q 210,140 210,168 Q 210,196 170,175" fill="none" stroke="#ff2d55" stroke-width="1.2" opacity="0.55"/>
+          <path d="M 170,168 Q 228,130 228,168 Q 228,206 170,175" fill="none" stroke="#ff2d55" stroke-width="1"   opacity="0.3"/>
+          <text x="232" y="148" fill="#ff2d55" font-size="8" font-family="Share Tech Mono,monospace">EMI &#8733; A&#183;I&#183;f&#178;</text>
+
+          <!-- di/dt label -->
+          <text x="120" y="167" fill="#ffcc00" font-size="7" font-family="Share Tech Mono,monospace">di/dt = I&#8346;/t&#7523; = V/(2.2R&#178;C)</text>
+
+          <!-- State labels -->
+          <text x="340" y="60"  fill="#4a6070" font-size="8" font-family="Share Tech Mono,monospace">HS ON</text>
+          <text x="340" y="72"  fill="#4a6070" font-size="8" font-family="Share Tech Mono,monospace">&#8593; switching</text>
+          <text x="340" y="310" fill="#4a6070" font-size="8" font-family="Share Tech Mono,monospace">LS ON</text>
+          <text x="340" y="322" fill="#4a6070" font-size="8" font-family="Share Tech Mono,monospace">&#8593; charges C</text>
+
+        </svg>
+
+        <!-- Two callout boxes below SVG -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;">
+          <div style="background:rgba(255,45,85,0.08);border:1px solid rgba(255,45,85,0.3);border-radius:3px;padding:9px 10px;">
+            <div style="font-family:'Orbitron',monospace;font-size:8px;color:var(--danger);letter-spacing:1px;margin-bottom:4px;">R<sub>BOOT</sub> TOO SMALL</div>
+            <div style="font-size:10px;color:#8ab4c8;">Fast edge &rarr; high I &rarr; large EMI &amp; V<sub>DS</sub> spike from L&middot;di/dt in loop</div>
+          </div>
+          <div style="background:rgba(255,204,0,0.06);border:1px solid rgba(255,204,0,0.25);border-radius:3px;padding:9px 10px;">
+            <div style="font-family:'Orbitron',monospace;font-size:8px;color:var(--warn);letter-spacing:1px;margin-bottom:4px;">R<sub>BOOT</sub> TOO LARGE</div>
+            <div style="font-size:10px;color:#8ab4c8;">Slow HS gate drive &rarr; increased switching loss &middot; P<sub>R</sub> = &frac12;C<sub>BOOT</sub>V&sup2;f<sub>0</sub></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+  <!-- END PROBLEM STATEMENT -->
+
+
+
   <div class="layout">
     <!-- LEFT: Controls -->
     <div>
